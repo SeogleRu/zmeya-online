@@ -888,4 +888,190 @@
                 setDirection(new THREE.Vector3(0, 0, 1));
             } else if (key === 'arrowleft' || key === 'a' || key === 'ф') {
                 setDirection(new THREE.Vector3(-1, 0, 0));
-            } else if (key === 'arrowright' || key === 'd
+            } else if (key === 'arrowright' || key === 'd' || key === 'в') {
+                setDirection(new THREE.Vector3(1, 0, 0));
+            } else if (key === ' ' || key === 'p' || key === 'escape') {
+                togglePause();
+            }
+            
+            if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key)) {
+                event.preventDefault();
+            }
+        }
+
+        // ===== Свайпы =====
+        let touchStartX = 0, touchStartY = 0;
+        let touchStartTime = 0;
+        let touchMoved = false;
+        const SWIPE_THRESHOLD = 30; // пикселей
+        const SWIPE_TIME_LIMIT = 500; // мс
+
+        function handleTouchStart(e) {
+            if (!gameActive || paused) return;
+            if (e.target.closest('.touch-btn') || e.target.closest('#pause-btn') 
+                || e.target.closest('#restart-btn') || e.target.closest('#menu-btn-gameover')) return;
+            
+            const t = e.touches[0];
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            touchStartTime = Date.now();
+            touchMoved = false;
+        }
+
+        function handleTouchMove(e) {
+            if (!gameActive || paused || touchMoved) return;
+            if (e.target.closest('.touch-btn')) return;
+            
+            const t = e.touches[0];
+            const dx = t.clientX - touchStartX;
+            const dy = t.clientY - touchStartY;
+            
+            if (Math.abs(dx) < SWIPE_THRESHOLD && Math.abs(dy) < SWIPE_THRESHOLD) return;
+            
+            touchMoved = true;
+            
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // Горизонтальный свайп
+                if (dx > 0) setDirection(new THREE.Vector3(1, 0, 0));
+                else setDirection(new THREE.Vector3(-1, 0, 0));
+            } else {
+                // Вертикальный свайп
+                if (dy > 0) setDirection(new THREE.Vector3(0, 0, 1));
+                else setDirection(new THREE.Vector3(0, 0, -1));
+            }
+        }
+
+        function handleTouchEnd(e) {
+            // Можно использовать для коротких тапов, но пока не нужно
+        }
+
+        // ===== Пауза =====
+        function togglePause() {
+            if (!gameActive) return;
+            paused = !paused;
+            document.getElementById('pause-btn').textContent = paused ? '▶' : '⏸';
+        }
+
+        // ===== Привязка кнопок D-Pad =====
+        function bindTouchButtons() {
+            const btnUp = document.getElementById('btn-up');
+            const btnDown = document.getElementById('btn-down');
+            const btnLeft = document.getElementById('btn-left');
+            const btnRight = document.getElementById('btn-right');
+            
+            const pressAndHold = (btn, dirFactory) => {
+                let intervalId = null;
+                
+                const start = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!gameActive || paused) return;
+                    setDirection(dirFactory());
+                    // Автоповтор при удержании
+                    intervalId = setInterval(() => {
+                        if (gameActive && !paused) setDirection(dirFactory());
+                    }, 150);
+                };
+                
+                const stop = (e) => {
+                    if (e) { e.preventDefault(); e.stopPropagation(); }
+                    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+                };
+                
+                btn.addEventListener('touchstart', start, { passive: false });
+                btn.addEventListener('touchend', stop, { passive: false });
+                btn.addEventListener('touchcancel', stop, { passive: false });
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('mouseup', stop);
+                btn.addEventListener('mouseleave', stop);
+            };
+            
+            pressAndHold(btnUp, () => new THREE.Vector3(0, 0, -1));
+            pressAndHold(btnDown, () => new THREE.Vector3(0, 0, 1));
+            pressAndHold(btnLeft, () => new THREE.Vector3(-1, 0, 0));
+            pressAndHold(btnRight, () => new THREE.Vector3(1, 0, 0));
+        }
+
+        // ===== UI =====
+        function initUI() {
+            // Выбор карты
+            document.querySelectorAll('.map-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    currentMap = btn.dataset.map;
+                    if (navigator.vibrate) navigator.vibrate(10);
+                });
+            });
+            
+            document.getElementById('start-btn').addEventListener('click', () => {
+                if (navigator.vibrate) navigator.vibrate(20);
+                startGame();
+            });
+            
+            document.getElementById('restart-btn').addEventListener('click', () => {
+                if (navigator.vibrate) navigator.vibrate(20);
+                startGame();
+            });
+            
+            document.getElementById('menu-btn-gameover').addEventListener('click', goToMenu);
+            
+            document.getElementById('pause-btn').addEventListener('click', togglePause);
+            
+            window.addEventListener('keydown', handleKeyDown);
+            
+            // Сенсорное управление
+            const canvas = renderer.domElement;
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: true });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+            
+            // Кнопки D-Pad
+            bindTouchButtons();
+            
+            // Блокируем контекстное меню на долгое нажатие
+            document.addEventListener('contextmenu', e => e.preventDefault());
+            
+            // Запрет масштабирования жестами
+            document.addEventListener('gesturestart', e => e.preventDefault());
+            document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+        }
+
+        // ===== Анимация =====
+        let clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            
+            // Вращение яблока
+            if (appleMesh) {
+                appleMesh.rotation.y += delta * 1.5;
+                // Лёгкое парение
+                appleMesh.position.y = 0.35 + Math.sin(clock.elapsedTime * 2) * 0.08;
+            }
+            
+            // Пульсация головы змейки
+            if (snakeMeshes.length > 0 && snakeMeshes[0]) {
+                const scale = 1 + Math.sin(clock.elapsedTime * 4) * 0.03;
+                snakeMeshes[0].scale.setScalar(scale);
+            }
+            
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // ===== Запуск =====
+        function init() {
+            initScene();
+            initUI();
+            animate();
+            
+            // Первичная генерация для фона меню (необязательно)
+            generateMap('empty');
+        }
+
+        init();
+    </script>
+</body>
+</html>
