@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>Zmeya Online 3D - Мобильная версия</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a1a;
+            touch-action: none;
+            position: fixed;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        /* ===== МЕНЮ ===== */
+        #menu {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            padding: 20px;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            transition: opacity 0.4s;
+        }
+
+        #menu.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #menu h1 {
+            font-size: clamp(2rem, 9vw, 3.5rem);
+            margin-bottom: 6vh;
+            color: #aaffaa;
+            text-shadow: 0 0 15px #00ff00, 0 0 30px #00aa00;
+            letter-spacing: 3px;
+            text-align: center;
+            font-weight: 900;
+        }
+
+        .map-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            max-width: 340px;
+            margin-bottom: 5vh;
+        }
+
+        .map-btn {
+            padding: 18px 20px;
+            font-size: clamp(1rem, 4.5vw, 1.2rem);
+            border: 2px solid #00ff00;
+            background: rgba(0, 100, 0, 0.35);
+            color: #ccffcc;
+            cursor: pointer;
+            border-radius: 14px;
+            transition: all 0.2s;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+            width: 100%;
+        }
+
+        .map-btn:active {
+            transform: scale(0.97);
+        }
+
+        .map-btn.selected {
+            background: linear-gradient(135deg, #00ff00, #00aa00);
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 25px #00ff00;
+        }
+
+        #start-btn {
+            padding: 20px 50px;
+            font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+            background: linear-gradient(135deg, #00ff00, #00aa00);
+            border: none;
+            color: #000;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 900;
+            letter-spacing: 3px;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.7);
+            transition: all 0.2s;
+        }
+
+        #start-btn:active {
+            transform: scale(0.96);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        /* ===== HUD ===== */
+        #hud {
+            position: absolute;
+            top: calc(15px + env(safe-area-inset-top));
+            left: 15px;
+            color: white;
+            font-size: clamp(1rem, 4.5vw, 1.3rem);
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 18px;
+            border-radius: 14px;
+            border-left: 5px solid #00ff00;
+            z-index: 50;
+            display: none;
+            font-weight: bold;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+
+        #hud span {
+            color: #ffcc00;
+            font-weight: 900;
+        }
+
+        /* ===== КНОПКА ПАУЗЫ ===== */
+        #pause-btn {
+            position: absolute;
+            top: calc(15px + env(safe-area-inset-top));
+            right: 15px;
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            border-radius: 14px;
+            color: #00ff00;
+            font-size: 22px;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            cursor: pointer;
+        }
+
+        #pause-btn:active {
+            background: rgba(0, 255, 0, 0.2);
+        }
+
+        /* ===== СЕНСОРНЫЕ КНОПКИ ===== */
+        #touch-controls {
+            position: absolute;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 8px;
+            z-index: 60;
+            width: min(220px, 55vw);
+            height: min(220px, 55vw);
+        }
+
+        .touch-btn {
+            background: rgba(0, 255, 0, 0.12);
+            border: 2px solid rgba(0, 255, 0, 0.5);
+            border-radius: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #00ff00;
+            font-size: clamp(20px, 6vw, 28px);
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            transition: background 0.1s;
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active {
+            background: rgba(0, 255, 0, 0.4);
+            transform: scale(0.95);
+        }
+
+        .touch-btn.empty {
+            background: transparent;
+            border: none;
+            pointer-events: none;
+        }
+
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+
+        /* ===== ИНДИКАТОР СВАЙПА ===== */
+        #swipe-hint {
+            position: absolute;
+            bottom: calc(35px + env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(170, 255, 170, 0.7);
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            z-index: 55;
+            display: none;
+            pointer-events: none;
+            text-align: center;
+            white-space: nowrap;
+            border: 1px solid rgba(0, 255, 0, 0.2);
+        }
+
+        /* ===== GAME OVER ===== */
+        #game-over {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 26, 0.95);
+            color: white;
+            padding: clamp(25px, 7vw, 50px) clamp(30px, 8vw, 60px);
+            border-radius: 25px;
+            text-align: center;
+            z-index: 200;
+            border: 3px solid #00ff00;
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.6);
+            display: none;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            width: 85%;
+            max-width: 400px;
+        }
+
+        #game-over h2 {
+            font-size: clamp(1.6rem, 7vw, 2.2rem);
+            margin-bottom: 15px;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00;
+            letter-spacing: 2px;
+        }
+
+        #game-over p {
+            font-size: clamp(1.1rem, 4.5vw, 1.4rem);
+            margin-bottom: 25px;
+            color: #ccc;
+        }
+
+        #game-over p span {
+            color: #ffcc00;
+            font-weight: 900;
+        }
+
+        #restart-btn {
+            padding: 15px 40px;
+            font-size: clamp(1rem, 4.5vw, 1.2rem);
+            background: linear-gradient(135deg, #00ff00, #00aa00);
+            border: none;
+            color: black;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 900;
+            letter-spacing: 2px;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+        }
+
+        #restart-btn:active {
+            transform: scale(0.96);
+        }
+
+        #menu-btn-gameover {
+            display: block;
+            margin: 15px auto 0;
+            padding: 12px 30px;
+            font-size: clamp(0.9rem, 4vw, 1rem);
+            background: transparent;
+            border: 2px solid #888;
+            color: #ccc;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        #menu-btn-gameover:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ===== ЛАНДШАФТНЫЙ РЕЖИМ ===== */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #menu h1 {
+                font-size: 1.8rem;
+                margin-bottom: 15px;
+            }
+            .map-buttons {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+                max-width: 90%;
+                margin-bottom: 15px;
+            }
+            .map-btn {
+                width: auto;
+                padding: 12px 18px;
+                font-size: 0.9rem;
+            }
+            #start-btn {
+                padding: 14px 40px;
+                font-size: 1.1rem;
+            }
+            #touch-controls {
+                width: min(160px, 30vw);
+                height: min(160px, 30vw);
+                bottom: calc(10px + env(safe-area-inset-bottom));
+            }
+            #swipe-hint {
+                display: none !important;
+            }
+        }
+
+        /* Планшеты - показываем свайп-подсказку вместо кнопок */
+        @media (min-width: 768px) and (pointer: coarse) {
+            #touch-controls {
+                display: none !important;
+            }
+            #swipe-hint {
+                display: block !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- МЕНЮ -->
+    <div id="menu">
+        <h1>Zmeya Online 3D</h1>
+        <div class="map-buttons">
+            <button class="map-btn selected" data-map="empty">🟢 Пустая карта</button>
+            <button class="map-btn" data-map="maze1">🟫 Лабиринт 1</button>
+            <button class="map-btn" data-map="maze2">🟫 Лабиринт 2</button>
+        </div>
+        <button id="start-btn">ИГРАТЬ</button>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">Счёт: <span id="score">0</span></div>
+    
+    <!-- Кнопка паузы -->
+    <div id="pause-btn">⏸</div>
+
+    <!-- Сенсорные кнопки (D-Pad) -->
+    <div id="touch-controls">
+        <div class="touch-btn" id="btn-up">▲</div>
+        <div class="touch-btn" id="btn-left">◀</div>
+        <div class="touch-btn" id="btn-right">▶</div>
+        <div class="touch-btn" id="btn-down">▼</div>
+    </div>
+
+    <!-- Подсказка о свайпе -->
+    <div id="swipe-hint">👆 Свайпайте для управления</div>
+
+    <!-- GAME OVER -->
+    <div id="game-over">
+        <h2 id="gameover-title">ИГРА ОКОНЧЕНА</h2>
+        <p>Ваш счёт: <span id="final-score">0</span></p>
+        <button id="restart-btn">ИГРАТЬ СНОВА</button>
+        <button id="menu-btn-gameover">В МЕНЮ</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // ===== Определение типа устройства =====
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                         || (navigator.maxTouchPoints && navigator.maxTouchPoints > 1);
+        const isSmallScreen = window.innerWidth < 768;
+
+        // ===== Конфигурация =====
+        const CONFIG = {
+            cellSize: 1,
+            snakeSpeed: 0.18, // сек между шагами (чуть медленнее для мобилок)
+            colors: {
+                snakeHead: 0x00ff00,
+                snakeBody: 0x00aa00,
+                apple: 0xff3333,
+                wall: 0x8B4513,
+                ground: 0x2a2a3a
+            }
+        };
+
+        // ===== Состояние =====
+        let scene, camera, renderer, controls;
+        let snake = [];
+        let direction = new THREE.Vector3(1, 0, 0);
+        let nextDirection = new THREE.Vector3(1, 0, 0);
+        let apple = null;
+        let walls = [];
+        let score = 0;
+        let gameActive = false;
+        let paused = false;
+        let gameLoopInterval = null;
+        let currentMap = 'empty';
+        let gridSize = 15;
+        let halfSize = 7;
+        
+        let snakeMeshes = [];
+        let appleMesh = null;
+        let wallMeshes = [];
+        let groundMesh = null;
+        let gridHelper = null;
+
+        // ===== Инициализация сцены =====
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+            scene.fog = new THREE.Fog(0x0a0a1a, 20, 45);
+
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 200);
+
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: !isMobile, // отключаем AA на мобильных для производительности
+                powerPreference: 'high-performance',
+                alpha: false
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            // Ограничиваем pixelRatio для производительности на мобилках
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 2 : 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Освещение (упрощённое для мобилок)
+            const ambientLight = new THREE.AmbientLight(0x666688, isMobile ? 0.9 : 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            if (!isMobile) {
+                dirLight.shadow.mapSize.width = 1024;
+                dirLight.shadow.mapSize.height = 1024;
+            } else {
+                dirLight.shadow.mapSize.width = 512;
+                dirLight.shadow.mapSize.height = 512;
+            }
+            const d = 15;
+            dirLight.shadow.camera.left = -d;
+            dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d;
+            dirLight.shadow.camera.bottom = -d;
+            dirLight.shadow.camera.near = 1;
+            dirLight.shadow.camera.far = 50;
+            scene.add(dirLight);
+
+            // Камера - изометрия, оптимально для мобилок
+            updateCameraForScreen();
+
+            // Controls (отключаем на мобильных)
+            if (!isMobile) {
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.08;
+                controls.target.set(0, 0, 0);
+                controls.maxPolarAngle = Math.PI / 2.2;
+                controls.minDistance = 8;
+                controls.maxDistance = 35;
+                controls.enablePan = false;
+            }
+
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('orientationchange', () => setTimeout(onWindowResize, 200));
+        }
+
+        function updateCameraForScreen() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const isPortrait = aspect < 1;
+            
+            if (isPortrait) {
+                // Портретная ориентация - камера выше и дальше
+                camera.position.set(0, 18, 14);
+            } else {
+                // Ландшафт - более пологий угол
+                camera.position.set(0, 14, 16);
+            }
+            camera.lookAt(0, 0, 0);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if (!controls) updateCameraForScreen();
+        }
+
+        // ===== Очистка =====
+        function clearGameObjects() {
+            snakeMeshes.forEach(m => scene.remove(m));
+            snakeMeshes = [];
+            if (appleMesh) { scene.remove(appleMesh); appleMesh = null; }
+            wallMeshes.forEach(m => scene.remove(m));
+            wallMeshes = [];
+            if (groundMesh) { scene.remove(groundMesh); groundMesh = null; }
+            if (gridHelper) { scene.remove(gridHelper); gridHelper = null; }
+        }
+
+        // ===== Генерация карты =====
+        function generateMap(mapType) {
+            clearGameObjects();
+            
+            if (mapType === 'empty') {
+                gridSize = 13;
+                halfSize = Math.floor(gridSize / 2);
+                walls = [];
+            } else if (mapType === 'maze1') {
+                gridSize = 13;
+                halfSize = Math.floor(gridSize / 2);
+                walls = [
+                    ...createBorderWalls(gridSize),
+                    {x: -2, z: -2}, {x: -1, z: -2}, {x: 0, z: -2},
+                    {x: 1, z: 0}, {x: 2, z: 0}, {x: 3, z: 0},
+                    {x: -3, z: 1}, {x: -2, z: 1},
+                    {x: 1, z: 2}, {x: 2, z: 2}, {x: 3, z: 2},
+                    {x: -1, z: 3}, {x: 0, z: 3}, {x: 1, z: 3},
+                    {x: 3, z: -3}, {x: 4, z: -3},
+                    {x: -4, z: -1}, {x: -4, z: 0}, {x: -4, z: 1},
+                ];
+            } else if (mapType === 'maze2') {
+                gridSize = 13;
+                halfSize = Math.floor(gridSize / 2);
+                walls = [
+                    ...createBorderWalls(gridSize),
+                    {x: -2, z: -3}, {x: -2, z: -2}, {x: -2, z: -1},
+                    {x: 0, z: -3}, {x: 1, z: -3}, {x: 2, z: -3},
+                    {x: -3, z: 0}, {x: -3, z: 1},
+                    {x: 3, z: 0}, {x: 3, z: 1}, {x: 3, z: 2},
+                    {x: -2, z: 2}, {x: -1, z: 2}, {x: 0, z: 2},
+                    {x: 0, z: 0}, {x: 0, z: 1},
+                    {x: 2, z: -1}, {x: 2, z: 0},
+                ];
+            }
+            
+            createGround();
+            createWalls();
+        }
+
+        function createBorderWalls(size) {
+            const result = [];
+            const half = Math.floor(size / 2);
+            for (let i = -half; i <= half; i++) {
+                result.push({x: i, z: -half});
+                result.push({x: i, z: half});
+                if (i > -half && i < half) {
+                    result.push({x: -half, z: i});
+                    result.push({x: half, z: i});
+                }
+            }
+            return result;
+        }
+
+        function createGround() {
+            const geo = new THREE.BoxGeometry(gridSize + 1, 0.2, gridSize + 1);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: CONFIG.colors.ground,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            groundMesh = new THREE.Mesh(geo, mat);
+            groundMesh.position.y = -0.1;
+            groundMesh.receiveShadow = true;
+            scene.add(groundMesh);
+            
+            gridHelper = new THREE.GridHelper(gridSize, gridSize, 0x00ff00, 0x225522);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+        }
+
+        function createWalls() {
+            wallMeshes.forEach(m => scene.remove(m));
+            wallMeshes = [];
+            
+            const geo = new THREE.BoxGeometry(0.9, 1, 0.9);
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: CONFIG.colors.wall,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            
+            walls.forEach(pos => {
+                const wall = new THREE.Mesh(geo, mat);
+                wall.position.set(pos.x, 0.5, pos.z);
+                wall.castShadow = !isMobile;
+                wall.receiveShadow = true;
+                scene.add(wall);
+                wallMeshes.push(wall);
+            });
+        }
+
+        // ===== Инициализация змейки =====
+        function initSnake() {
+            snakeMeshes.forEach(m => scene.remove(m));
+            snakeMeshes = [];
+            
+            let startX = 0, startZ = 0;
+            if (currentMap !== 'empty') {
+                outer: for (let r = 0; r < 6; r++) {
+                    for (let dx = -r; dx <= r; dx++) {
+                        for (let dz = -r; dz <= r; dz++) {
+                            if (!walls.some(w => w.x === dx && w.z === dz)) {
+                                startX = dx;
+                                startZ = dz;
+                                break outer;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            snake = [
+                new THREE.Vector3(startX, 0, startZ),
+                new THREE.Vector3(startX - 1, 0, startZ),
+                new THREE.Vector3(startX - 2, 0, startZ)
+            ];
+            
+            direction.set(1, 0, 0);
+            nextDirection.set(1, 0, 0);
+            
+            updateSnakeMeshes();
+        }
+
+        function updateSnakeMeshes() {
+            snakeMeshes.forEach(m => scene.remove(m));
+            snakeMeshes = [];
+            
+            const headGeo = new THREE.SphereGeometry(0.4, isMobile ? 10 : 16, isMobile ? 10 : 16);
+            const bodyGeo = new THREE.SphereGeometry(0.35, isMobile ? 8 : 14, isMobile ? 8 : 14);
+            
+            snake.forEach((segment, index) => {
+                const isHead = index === 0;
+                const geo = isHead ? headGeo : bodyGeo;
+                const color = isHead ? CONFIG.colors.snakeHead : CONFIG.colors.snakeBody;
+                
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    emissive: isHead ? 0x00aa00 : 0x004400,
+                    roughness: 0.4,
+                    metalness: 0.3
+                });
+                
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(segment);
+                mesh.position.y = 0.4;
+                mesh.castShadow = !isMobile;
+                mesh.receiveShadow = true;
+                
+                if (isHead) {
+                    const eyeGeo = new THREE.SphereGeometry(0.1, 6, 6);
+                    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                    
+                    const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+                    eye1.position.set(0.18, 0.15, 0.25);
+                    mesh.add(eye1);
+                    
+                    const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+                    eye2.position.set(-0.18, 0.15, 0.25);
+                    mesh.add(eye2);
+                }
+                
+                scene.add(mesh);
+                snakeMeshes.push(mesh);
+            });
+        }
+
+        // ===== Яблоко =====
+        function spawnApple() {
+            if (appleMesh) { scene.remove(appleMesh); appleMesh = null; }
+            
+            const freeCells = [];
+            for (let x = -halfSize; x <= halfSize; x++) {
+                for (let z = -halfSize; z <= halfSize; z++) {
+                    if (walls.some(w => w.x === x && w.z === z)) continue;
+                    if (snake.some(s => s.x === x && s.z === z)) continue;
+                    freeCells.push({x, z});
+                }
+            }
+            
+            if (freeCells.length === 0) {
+                gameOver(true);
+                return;
+            }
+            
+            const pos = freeCells[Math.floor(Math.random() * freeCells.length)];
+            
+            const group = new THREE.Group();
+            
+            const appleGeo = new THREE.SphereGeometry(0.35, isMobile ? 10 : 14, isMobile ? 10 : 14);
+            const appleMat = new THREE.MeshStandardMaterial({ 
+                color: CONFIG.colors.apple,
+                emissive: 0x660000,
+                roughness: 0.3
+            });
+            const body = new THREE.Mesh(appleGeo, appleMat);
+            body.castShadow = !isMobile;
+            group.add(body);
+            
+            const leafGeo = new THREE.ConeGeometry(0.13, 0.18, 6);
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const leaf = new THREE.Mesh(leafGeo, leafMat);
+            leaf.position.set(0.1, 0.4, 0);
+            leaf.rotation.z = -0.3;
+            group.add(leaf);
+            
+            group.position.set(pos.x, 0.35, pos.z);
+            scene.add(group);
+            appleMesh = group;
+            apple = new THREE.Vector3(pos.x, 0, pos.z);
+        }
+
+        // ===== Движение =====
+        function moveSnake() {
+            if (!gameActive || paused) return;
+            
+            if (nextDirection.length() > 0) {
+                direction.copy(nextDirection);
+            }
+            
+            const head = snake[0].clone();
+            const newHead = head.clone().add(direction);
+            
+            // Границы
+            if (newHead.x < -halfSize || newHead.x > halfSize || 
+                newHead.z < -halfSize || newHead.z > halfSize) {
+                gameOver(false);
+                return;
+            }
+            
+            // Стены
+            if (walls.some(w => w.x === newHead.x && w.z === newHead.z)) {
+                gameOver(false);
+                return;
+            }
+            
+            // Сама себя
+            const willEat = apple && newHead.x === apple.x && newHead.z === apple.z;
+            const bodyToCheck = willEat ? snake : snake.slice(0, -1);
+            if (bodyToCheck.some(s => s.x === newHead.x && s.z === newHead.z)) {
+                gameOver(false);
+                return;
+            }
+            
+            snake.unshift(newHead);
+            
+            if (willEat) {
+                score += 10;
+                updateScore();
+                spawnApple();
+                // Вибрация на мобильных
+                if (navigator.vibrate) navigator.vibrate(30);
+            } else {
+                snake.pop();
+            }
+            
+            updateSnakeMeshes();
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        // ===== Game Over =====
+        function gameOver(win = false) {
+            gameActive = false;
+            if (gameLoopInterval) {
+                clearInterval(gameLoopInterval);
+                gameLoopInterval = null;
+            }
+            
+            document.getElementById('final-score').textContent = score;
+            const title = document.getElementById('gameover-title');
+            title.textContent = win ? '🏆 ПОБЕДА!' : 'ИГРА ОКОНЧЕНА';
+            title.style.color = win ? '#ffcc00' : '#00ff00';
+            
+            document.getElementById('game-over').style.display = 'block';
+            document.getElementById('touch-controls').style.display = 'none';
+            document.getElementById('pause-btn').style.display = 'none';
+            
+            if (navigator.vibrate) navigator.vibrate(win ? [50, 50, 50] : 200);
+        }
+
+        // ===== Запуск =====
+        function startGame() {
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+            document.getElementById('pause-btn').style.display = 'flex';
+            
+            // Показываем сенсорное управление только на устройствах с тачскрином
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                if (isSmallScreen || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    document.getElementById('touch-controls').style.display = 'grid';
+                    // Скрываем подсказку при явных кнопках
+                    if (window.innerWidth < 768) {
+                        document.getElementById('swipe-hint').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('swipe-hint').style.display = 'block';
+                }
+            }
+            
+            score = 0;
+            updateScore();
+            paused = false;
+            document.getElementById('pause-btn').textContent = '⏸';
+            
+            generateMap(currentMap);
+            initSnake();
+            spawnApple();
+            
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            gameActive = true;
+            gameLoopInterval = setInterval(moveSnake, CONFIG.snakeSpeed * 1000);
+        }
+
+        function goToMenu() {
+            gameActive = false;
+            if (gameLoopInterval) {
+                clearInterval(gameLoopInterval);
+                gameLoopInterval = null;
+            }
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('pause-btn').style.display = 'none';
+            document.getElementById('touch-controls').style.display = 'none';
+            document.getElementById('swipe-hint').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('menu').classList.remove('hidden');
+        }
+
+        // ===== Управление направлением =====
+        function setDirection(newDir) {
+            if (!gameActive || paused) return;
+            // Запрещаем разворот на 180°
+            if (newDir.x === -direction.x && newDir.z === -direction.z) return;
+            // Нельзя менять направление дважды за один шаг
+            nextDirection.copy(newDir);
+        }
+
+        // ===== Клавиатура (для десктопа) =====
+        function handleKeyDown(event) {
+            if (!gameActive) return;
+            
+            const key = event.key.toLowerCase();
+            if (key === 'arrowup' || key === 'w' || key === 'ц') {
+                setDirection(new THREE.Vector3(0, 0, -1));
+            } else if (key === 'arrowdown' || key === 's' || key === 'ы') {
+                setDirection(new THREE.Vector3(0, 0, 1));
+            } else if (key === 'arrowleft' || key === 'a' || key === 'ф') {
+                setDirection(new THREE.Vector3(-1, 0, 0));
+            } else if (key === 'arrowright' || key === 'd
